@@ -295,11 +295,13 @@ public class InstantiationUtil {
 	
 	public static Object deserializeObject(byte[] bytes, ClassLoader cl) throws IOException, ClassNotFoundException {
 		ObjectInputStream oois = null;
+		Object returnObject;
 		final ClassLoader old = Thread.currentThread().getContextClassLoader();
 		try {
 			Thread.currentThread().setContextClassLoader(cl);
 			oois = new ClassLoaderObjectInputStream(new ByteArrayInputStream(bytes), cl);
-			return oois.readObject();
+			returnObject = oois.readObject();
+			return returnObject;
 		} finally {
 			Thread.currentThread().setContextClassLoader(old);
 			if (oois != null) {
@@ -312,7 +314,6 @@ public class InstantiationUtil {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ObjectOutputStream oos = new ObjectOutputStream(baos);
 		oos.writeObject(o);
-
 		return baos.toByteArray();
 	}
 	

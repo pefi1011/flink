@@ -21,6 +21,7 @@ package org.apache.flink.contrib.operatorstatistics.heavyhitters;
 import com.clearspring.analytics.hash.MurmurHash;
 import com.clearspring.analytics.stream.frequency.CountMinSketch;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +36,9 @@ public class CountMinHeavyHitter implements HeavyHitter {
 	HashMap<Object,Long> heavyHitters;
 	double fraction;
 	long cardinality;
+
+	public CountMinHeavyHitter(){
+	}
 
 	public CountMinHeavyHitter(double fraction, double error, double confidence, int seed){
 		this.countMinSketch = new CountMinSketch(error,confidence,seed);
@@ -148,6 +152,33 @@ public class CountMinHeavyHitter implements HeavyHitter {
 			out += entry.getKey().toString() + " -> estimated freq. " + entry.getValue() + "\n";
 		}
 		return out;
+	}
+
+	public byte[] serialize(){
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(baos);
+		try{
+			dos.write(CountMinSketch.serialize(countMinSketch));
+			dos.writeDouble(fraction);
+			dos.writeLong(cardinality);
+			return baos.toByteArray();
+		}catch(IOException e){
+			throw new RuntimeException("Error trying to serialize CountMinSketch for Heavy Hitters");
+		}
+	}
+
+	public static CountMinHeavyHitter deserialize(byte[] data){
+		ByteArrayInputStream bais = new ByteArrayInputStream(data);
+		DataInputStream dis = new DataInputStream(bais);
+		try{
+			CountMinHeavyHitter countMinSketch = new CountMinHeavyHitter();
+			countMinSketch.countMinSketch = CountMinSketch.deserialize(data);
+			countMinSketch.fraction = dis.readDouble();
+			countMinSketch.cardinality = dis.readLong();
+			return countMinSketch;
+		}catch(IOException e) {
+			throw new RuntimeException("Error deserializing CountMinSketch for Heavy Hitters");
+		}
 	}
 
 }

@@ -27,6 +27,9 @@ import org.apache.flink.contrib.operatorstatistics.heavyhitters.LossyCounting;
 import org.apache.flink.contrib.operatorstatistics.heavyhitters.CountMinHeavyHitter;
 import org.apache.flink.contrib.operatorstatistics.heavyhitters.HeavyHitterMergeException;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -47,9 +50,9 @@ public class OperatorStatistics implements Serializable {
 
 	Object min;
 	Object max;
-	ICardinality countDistinct;
-	HeavyHitter heavyHitter;
 	long cardinality = 0;
+	transient ICardinality countDistinct;
+	transient HeavyHitter heavyHitter;
 
 	public OperatorStatistics(OperatorStatisticsConfig config) {
 		this.config = config;
@@ -145,6 +148,26 @@ public class OperatorStatistics implements Serializable {
 		clone.countDistinct = this.countDistinct;
 		clone.heavyHitter = this.heavyHitter;
 		return clone;
+	}
+
+	public void writeObject(ObjectOutputStream out) throws IOException {
+		out.defaultWriteObject();
+/*		if (this.config.countDistinctAlgorithm.equals(OperatorStatisticsConfig.CountDistinctAlgorithm.LINEAR_COUNTING)){
+			out.write(countDistinct.getBytes());
+			out.writeInt(((LinearCounting) countDistinct).getCount());
+		}else{
+			out.writeObject(countDistinct);
+		}
+		out.writeObject(heavyHitter);*/
+	}
+
+	public void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+	/*	try {
+			local = (OperatorStatistics) in.readObject();
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException("Error when reading OperatorStatistics from input stream",e);
+		}*/
 	}
 
 }

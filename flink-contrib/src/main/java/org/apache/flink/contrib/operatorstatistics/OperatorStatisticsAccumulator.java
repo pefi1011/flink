@@ -17,7 +17,9 @@
  */
 package org.apache.flink.contrib.operatorstatistics;
 
+import com.clearspring.analytics.stream.cardinality.LinearCounting;
 import org.apache.flink.api.common.accumulators.Accumulator;
+import org.apache.flink.contrib.operatorstatistics.heavyhitters.CountMinHeavyHitter;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -29,7 +31,6 @@ import java.io.ObjectOutputStream;
  *
  */
 public class OperatorStatisticsAccumulator implements Accumulator<Object, OperatorStatistics> {
-
 
 	private OperatorStatistics local;
 
@@ -57,19 +58,12 @@ public class OperatorStatisticsAccumulator implements Accumulator<Object, Operat
 		local.merge(other.getLocalValue());
 	}
 
-	//todo this has not been tested
-	public void write(ObjectOutputStream out) throws IOException {
-		out.writeObject(local);
-
+	public void writeObject(ObjectOutputStream out) throws IOException {
+		local.writeObject(out);
 	}
 
-	//todo this has not been tested
-	public void read(ObjectInputStream in) throws IOException {
-		try {
-			local = (OperatorStatistics) in.readObject();
-		} catch (ClassNotFoundException e) {
-			throw new RuntimeException("Error when reading OperatorStatistics from input stream",e);
-		}
+	public void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		local.readObject(in);
 	}
 
 	@Override
