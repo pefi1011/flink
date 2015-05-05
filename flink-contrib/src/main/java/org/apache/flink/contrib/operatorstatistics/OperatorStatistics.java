@@ -150,7 +150,7 @@ public class OperatorStatistics implements Serializable {
 		return clone;
 	}
 
-	public void writeObject(ObjectOutputStream out) throws IOException {
+	private void writeObject(ObjectOutputStream out) throws IOException {
 		out.defaultWriteObject();
 /*		if (this.config.countDistinctAlgorithm.equals(OperatorStatisticsConfig.CountDistinctAlgorithm.LINEAR_COUNTING)){
 			out.write(countDistinct.getBytes());
@@ -161,7 +161,7 @@ public class OperatorStatistics implements Serializable {
 		out.writeObject(heavyHitter);*/
 	}
 
-	public void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
 	/*	try {
 			local = (OperatorStatistics) in.readObject();

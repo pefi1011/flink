@@ -58,14 +58,6 @@ public class OperatorStatisticsAccumulator implements Accumulator<Object, Operat
 		local.merge(other.getLocalValue());
 	}
 
-	public void writeObject(ObjectOutputStream out) throws IOException {
-		local.writeObject(out);
-	}
-
-	public void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-		local.readObject(in);
-	}
-
 	@Override
 	public Accumulator<Object, OperatorStatistics> clone() {
 		OperatorStatisticsAccumulator clone = new OperatorStatisticsAccumulator();
