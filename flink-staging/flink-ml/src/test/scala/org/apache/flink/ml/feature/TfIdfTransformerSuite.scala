@@ -17,6 +17,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     val env = ExecutionEnvironment.getExecutionEnvironment
     val input = "This is a test".split(" ").toSeq
     val documentKey = 1
+
     val inputDs = env.fromCollection(Seq((documentKey, input)))
     val transformer = new TfIdfTransformer()
 
@@ -26,10 +27,12 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     resultColl.length should be (1)
     resultColl(0)._1 should be (documentKey)
     resultColl(0)._2.size should be (4)
+
     for( x <- resultColl(0)._2){
-      x should be (0)
+      x._2 should be (0.0)
     }
 
   }
 
 }
+
