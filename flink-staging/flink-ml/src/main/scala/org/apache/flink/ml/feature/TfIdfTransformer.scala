@@ -28,8 +28,10 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       // sum(2) is easier to reed I think
       //.reduce((tup1, tup2) => (tup1._1, tup1._2, tup1._3 + tup2._3))
 
+    println(wordCounts.collect())
+
     val idf: DataSet[(String, Double)] = calculateIDF(wordCounts)
-    val tf: DataSet[(Int, String, Int)] = calculateTF(wordCounts)
+    val tf: DataSet[(Int, String, Double)] = calculateTF(wordCounts)
 
     // docId, word, tfIdf
     val tfIdf = tf.join(idf).where(1).equalTo(0) {
@@ -76,20 +78,22 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
 
   }
 
-  private def calculateTF(wordCounts: DataSet[(Int, String, Int)]): DataSet[(Int, String, Int)] = {
+  private def calculateTF(wordCounts: DataSet[(Int, String, Int)]): DataSet[(Int, String, Double)] = {
     val mostOftenWord = wordCounts
       //reduce to the count only
       .map(t => t._3)
       //take the biggest one
       .reduce((nr1, nr2) => if (nr1 > nr2) nr1 else nr2)
       .first(1)
+
+    println("Most often = " + mostOftenWord.collect())
     val tf = wordCounts
       //combine with the most often word
       .crossWithTiny(mostOftenWord)
       //create one tuple for easier handling (docId, Word, count, most often word)
       .map(t => (t._1._1, t._1._2, t._1._3, t._2))
       //calculate the tf (docId, word, tf)
-      .map(t => (t._1, t._2, t._3 / t._4))
+      .map(t => (t._1, t._2, t._3.asInstanceOf[Double] / t._4))
     tf
   }
 
