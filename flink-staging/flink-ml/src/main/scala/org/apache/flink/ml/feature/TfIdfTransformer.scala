@@ -17,18 +17,13 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     val wordCounts = input
       //count the words
       .flatMap(t => {
-      //create tuples docId, word, 1
-      t._2.map(s => (t._1, s, 1))
-    })
+        //create tuples docId, word, 1
+        t._2.map(s => (t._1, s, 1))
+      })
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
       .sum(2)
-
-      // sum(2) is easier to reed I think
-      //.reduce((tup1, tup2) => (tup1._1, tup1._2, tup1._3 + tup2._3))
-
-    println(wordCounts.collect())
 
     val idf: DataSet[(String, Double)] = calculateIDF(wordCounts)
     val tf: DataSet[(Int, String, Double)] = calculateTF(wordCounts)
@@ -38,18 +33,33 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       (t1, t2) => (t1._1, t1._2, t1._3 * t2._2)
     }
 
-    // Vassil
-    //for
-    //println()
+    val wordCount = wordCounts.collect().length
+
+
+    // TODO Delete these lines (only implementation purposes)
+    println("Word count " + wordCount)
     val resTF = tf.collect()
     val resIDF = idf.collect()
     val resTfIdf = tfIdf.collect()
+    println("ResTF   ------->")
+    for ( tf <- resTF) {
+      print(" " + tf.toString())
+    }
+    println()
+    println("ResIDF  ------->")
+    for ( idf <- resIDF) {
+      print(" " + idf.toString())
+    }
+    println()
+    println("ResTfID ------->")
+    for ( idf <- resTfIdf) {
+      print(" " + idf.toString())
+    }
+    println()
+    // END
 
-    println("tf ----> " + resTF(0) + " " + resTF(1) + " " + resTF(2) + " " + resTF(3))
-    println("idf ----> " + resIDF(0) + " " +  resIDF(1) + " " +  resIDF(2) + " " + resIDF(3))
-    println("tfIdf ----> " + resTfIdf)
 
-    /*
+
     //not sure how to work with SparseVector, this doesn't work...
     tfIdf
       .map(t => (t._1, SparseVector.fromCOO(1, (t._2.hashCode, t._3))))
@@ -61,21 +71,13 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     //TF IDF across the corpus
 
 
-    */
-
-
-    var test = (1, new SparseVector(4, Array(0, 1, 2, 3), Array(0.0, 0.0, 0.0, 0.0)))
-
-    println("A ---> " + test)
-
-    val env = ExecutionEnvironment.getExecutionEnvironment
-
-    var dset = env.fromCollection(Seq(test));
-
-    println ("AF --->" + dset.toString)
-    dset
-
-
+    //TODO delete these lines
+    //var test = (1, new SparseVector(4, Array(0, 1, 2, 3), Array(0.0, 0.0, 0.0, 0.0)))
+    //println("A ---> " + test)
+    //val env = ExecutionEnvironment.getExecutionEnvironment
+    //var dset = env.fromCollection(Seq(test));
+    //dset
+    // END
   }
 
   private def calculateTF(wordCounts: DataSet[(Int, String, Int)]): DataSet[(Int, String, Double)] = {
@@ -109,9 +111,6 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       //reduce to unique docIds
       .reduce((t1, t2) => t1)
       .count();
-
-    println(totalNumberOfDocuments);
-
 
     val idf = set
       //for tuple docId, Word and wordcount only take the word and a 1
