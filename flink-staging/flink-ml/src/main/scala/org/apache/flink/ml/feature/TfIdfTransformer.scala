@@ -7,6 +7,8 @@ import scala.math.log
 
 /**
  * @author Ronny Bräunlich
+ * @author Vassil Dimov
+ * @author Filip Perisic
  */
 class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVector)] {
 
