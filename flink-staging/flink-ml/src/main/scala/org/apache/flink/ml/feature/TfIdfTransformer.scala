@@ -18,30 +18,36 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
 
     val params = transformParameters.get(StopWordParameter)
 
-    var inputStopWordsFiltered = input.filter(word => !params.toList.contains(word._2))
+    //var inputStopWordsFiltered = input.filter(word => !params.toList.contains(word._2))
+
 
     // Here we will store the words in he form (docId, word, count)
     // Count represent the occurrence of "word" in document "docId"
-    val wordCounts = inputStopWordsFiltered
+    val wordCounts = input
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
       t._2.map(s => (t._1, s, 1))
     })
+      // TODO change this filtering
+      .filter(_._2 != "test")
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
       .sum(2)
 
+
     println(wordCounts.collect())
 
     // TODO Change this implementation
-    val words = inputStopWordsFiltered
+    val words = input
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
       t._2.map(s => (s, 1))
     })
+      // TODO change this filtering
+      .filter(_._2 != "test")
       //group by document and word
       .groupBy(0)
       // calculate the occurrence count of each word in specific document
@@ -86,17 +92,10 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     //not sure how to work with SparseVector, this doesn't work...
     // tfIdf ----> // docId, word, tfIdf
 
-    var prepareResult = tfIdf
-      .map(t => (t._1, Math.abs( MurmurHash3.stringHash(t._2) % wordsCount ), t._3))
-
-    println("Murmur " + prepareResult.collect())
-
     val res = tfIdf
       .map(t => (t._1, SparseVector.fromCOO(wordsCount, (Math.abs( MurmurHash3.stringHash(t._2) % wordsCount ), t._3))))
-      .groupBy(t => t._1)
-      .reduce((t1, t2) =>
-      (t1._1,
-        SparseVector.fromCOO(t1._2.size + t2._2.size,t1._2.toSeq ++ t2._2.toSeq)))
+      //.groupBy(t => t._1)
+      //.reduce((t1, t2) => (t1._1, SparseVector.fromCOO(t1._2.size + t2._2.size,t1._2.toSeq ++ t2._2.toSeq)))
 
     println()
     println("Result: " + res.collect())
