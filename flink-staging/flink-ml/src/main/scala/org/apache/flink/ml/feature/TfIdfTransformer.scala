@@ -1,9 +1,11 @@
 package org.apache.flink.ml.feature
 
+import akka.routing.MurmurHash
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.ml.common.{Parameter, ParameterMap, Transformer}
 import org.apache.flink.ml.math.SparseVector
 import scala.math.log
+import scala.util.hashing.MurmurHash3
 
 /**
  * @author Ronny Bräunlich
@@ -19,13 +21,31 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     val wordCounts = input
       //count the words
       .flatMap(t => {
-        //create tuples docId, word, 1
-        t._2.map(s => (t._1, s, 1))
-      })
+      //create tuples docId, word, 1
+      t._2.map(s => (t._1, s, 1))
+    })
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
       .sum(2)
+
+    println(wordCounts.collect())
+
+    // TODO Change this implementation
+    val words = input
+      //count the words
+      .flatMap(t => {
+      //create tuples docId, word, 1
+      t._2.map(s => (s, 1))
+    })
+      //group by document and word
+      .groupBy(0)
+      // calculate the occurrence count of each word in specific document
+      .sum(1)
+
+    val wordsCount = words.collect().length
+
+    println("WC " + wordsCount)
 
     val idf: DataSet[(String, Double)] = calculateIDF(wordCounts)
     val tf: DataSet[(Int, String, Double)] = calculateTF(wordCounts)
@@ -35,11 +55,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       (t1, t2) => (t1._1, t1._2, t1._3 * t2._2)
     }
 
-    val wordCount = wordCounts.collect().length
-
-
     // TODO Delete these lines (only implementation purposes)
-    println("Word count " + wordCount)
     val resTF = tf.collect()
     val resIDF = idf.collect()
     val resTfIdf = tfIdf.collect()
@@ -60,26 +76,28 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     println()
     // END
 
+    //var test = (1, new SparseVector(4, Array(0, 1, 2, 3), Array(0.0, 0.0, 0.0, 0.0)))
 
 
     //not sure how to work with SparseVector, this doesn't work...
-    tfIdf
-      .map(t => (t._1, SparseVector.fromCOO(1, (t._2.hashCode, t._3))))
+    // tfIdf ----> // docId, word, tfIdf
+
+    var prepareResult = tfIdf
+      .map(t => (t._1, Math.abs( MurmurHash3.stringHash(t._2) % (wordsCount * 2) ), t._3))
+
+    println("Murmur " + prepareResult.collect())
+
+    val res = tfIdf
+      .map(t => (t._1, SparseVector.fromCOO(wordsCount * 2, (Math.abs( MurmurHash3.stringHash(t._2) % (wordsCount*2) ), t._3))))
       .groupBy(t => t._1)
       .reduce((t1, t2) =>
       (t1._1,
         SparseVector.fromCOO(t1._2.size + t2._2.size,t1._2.toSeq ++ t2._2.toSeq)))
-    //the sequence are the documents and we have to transform them into bag of words
-    //TF IDF across the corpus
 
+    println()
+    println("Result: " + res.collect())
 
-    //TODO delete these lines
-    //var test = (1, new SparseVector(4, Array(0, 1, 2, 3), Array(0.0, 0.0, 0.0, 0.0)))
-    //println("A ---> " + test)
-    //val env = ExecutionEnvironment.getExecutionEnvironment
-    //var dset = env.fromCollection(Seq(test));
-    //dset
-    // END
+    res
   }
 
   private def calculateTF(wordCounts: DataSet[(Int, String, Int)]): DataSet[(Int, String, Double)] = {

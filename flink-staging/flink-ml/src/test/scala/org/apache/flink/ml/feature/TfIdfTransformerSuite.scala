@@ -12,9 +12,6 @@ import org.apache.flink.api.scala._
  */
 class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
-
-
-
   behavior of "the tf idf transformer implementation when tf is divided by the most frequent word from all documents"
 
   it should "calculate four times zero for four words in only one document" in {
