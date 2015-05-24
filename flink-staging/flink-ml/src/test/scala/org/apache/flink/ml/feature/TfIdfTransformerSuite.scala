@@ -92,6 +92,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
     // TODO ask Alex - should our implementation do this or it should be the user ?
     // tokenize words
+    // maybe some other things to
     inputString = inputString.replaceAll("[!?,]", "");
 
     val input = inputString.toLowerCase.split(" ").toSeq
