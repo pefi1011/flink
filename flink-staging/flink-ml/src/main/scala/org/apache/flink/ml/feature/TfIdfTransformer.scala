@@ -16,9 +16,13 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
 
   override def transform(input: DataSet[(Int /* docId */, Seq[String] /*The document */)], transformParameters: ParameterMap): DataSet[(Int, SparseVector)] = {
 
+    val params = transformParameters.get(StopWordParameter)
+
+    var inputStopWordsFiltered = input.filter(word => !params.toList.contains(word._2))
+
     // Here we will store the words in he form (docId, word, count)
     // Count represent the occurrence of "word" in document "docId"
-    val wordCounts = input
+    val wordCounts = inputStopWordsFiltered
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
@@ -32,7 +36,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     println(wordCounts.collect())
 
     // TODO Change this implementation
-    val words = input
+    val words = inputStopWordsFiltered
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
@@ -83,12 +87,12 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     // tfIdf ----> // docId, word, tfIdf
 
     var prepareResult = tfIdf
-      .map(t => (t._1, Math.abs( MurmurHash3.stringHash(t._2) % (wordsCount * 2) ), t._3))
+      .map(t => (t._1, Math.abs( MurmurHash3.stringHash(t._2) % wordsCount ), t._3))
 
     println("Murmur " + prepareResult.collect())
 
     val res = tfIdf
-      .map(t => (t._1, SparseVector.fromCOO(wordsCount * 2, (Math.abs( MurmurHash3.stringHash(t._2) % (wordsCount*2) ), t._3))))
+      .map(t => (t._1, SparseVector.fromCOO(wordsCount, (Math.abs( MurmurHash3.stringHash(t._2) % wordsCount ), t._3))))
       .groupBy(t => t._1)
       .reduce((t1, t2) =>
       (t1._1,
@@ -145,6 +149,6 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
   }
 }
 
-object StopWordParameter extends Parameter[List[String]] {
-  override val defaultValue: Option[List[String]] = Some(List())
+object StopWordParameter extends Parameter[Set[String]] {
+  override val defaultValue: Option[Set[String]] = Some(Set())
 }
