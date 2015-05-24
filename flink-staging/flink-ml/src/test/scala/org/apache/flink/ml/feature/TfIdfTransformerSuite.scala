@@ -26,12 +26,12 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
     resultColl.length should be(1)
     resultColl(0)._1 should be(documentKey)
-    resultColl(0)._2.size should be(4)
 
     for (x <- resultColl(0)._2) {
       x._2 should be(0.0)
     }
   }
+
 
   it should "calculate non zero result for tfidf" in {
 
@@ -39,7 +39,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     val input = "First line".toLowerCase.split(" ").toSeq
     val documentKey = 1
 
-    val input2 = "And one more".toLowerCase.split(" ").toSeq
+    val input2 = "And more more more more more more more line".toLowerCase.split(" ").toSeq
     val documentKey2 = 2
 
     val inputDs = env.fromCollection(Seq((documentKey, input), (documentKey2, input2)))
