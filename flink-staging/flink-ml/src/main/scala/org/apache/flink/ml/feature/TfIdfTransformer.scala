@@ -149,6 +149,6 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
   }
 }
 
-object StopWordParameter extends Parameter[List[String]] {
-  override val defaultValue: Option[List[String]] = Some(List())
+object StopWordParameter extends Parameter[Set[String]] {
+  override val defaultValue: Option[Set[String]] = Some(Set())
 }
