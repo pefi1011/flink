@@ -129,7 +129,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
   }
 
-  behavior of "Running TF-IDF on tree hard coded poems."
+  behavior of "Test_05: Running TF-IDF on tree hard coded poems."
   it should "return the same results as \"Running TF-IDF on tree read poems \" test" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
@@ -158,7 +158,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
   }
 
-  behavior of "Running TF-IDF on tree hard coded poems using stop words as parameter"
+  behavior of "Test_06: Running TF-IDF on tree hard coded poems using stop words as parameter"
   it should "return different result comparing to test without stop words" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
@@ -194,7 +194,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
   }
 
-  behavior of "Running TF-IDF on tree hard coded poems with normalization when tf is divided by the total number of terms in the document "
+  behavior of "Test_07: Running TF-IDF on tree hard coded poems with normalization when tf is divided by the total number of terms in the document "
   it should "return different result comparing to test without stop words" in {
 
     0 should be (0)
