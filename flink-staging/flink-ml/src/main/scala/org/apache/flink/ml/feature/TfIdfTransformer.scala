@@ -29,8 +29,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       //create tuples docId, word, 1
       t._2.map(s => (t._1, s, 1))
     })
-      // TODO change this filtering
-      .filter(_._2 != "test")
+      .filter(t => !transformParameters.apply(StopWordParameter).contains(t._2))
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
@@ -46,8 +45,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       //create tuples docId, word, 1
       t._2.map(s => (s, 1))
     })
-      // TODO change this filtering
-      .filter(_._2 != "test")
+      .filter(t => !transformParameters.apply(StopWordParameter).contains(t._1))
       //group by document and word
       .groupBy(0)
       // calculate the occurrence count of each word in specific document
@@ -92,8 +90,13 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     //not sure how to work with SparseVector, this doesn't work...
     // tfIdf ----> // docId, word, tfIdf
 
-    val res = tfIdf
-      .map(t => (t._1, SparseVector.fromCOO(wordsCount, (Math.abs( MurmurHash3.stringHash(t._2) % wordsCount ), t._3))))
+    val res = tfIdf.map(t => (t._1, List[(Int, Double)]((Math.abs(MurmurHash3.stringHash(t._2) % wordsCount), t._3))))
+    .groupBy(t => t._1)
+    .reduce((t1, t2) => (t1._1, t1._2 ++ t2._2))
+    .map(t => (t._1, SparseVector.fromCOO(wordsCount, t._2.toIterable)))
+
+   // val res = tfIdf
+     // .map(t => (t._1, SparseVector.fromCOO(wordsCount, (Math.abs( MurmurHash3.stringHash(t._2) % wordsCount ), t._3))))
       //.groupBy(t => t._1)
       //.reduce((t1, t2) => (t1._1, SparseVector.fromCOO(t1._2.size + t2._2.size,t1._2.toSeq ++ t2._2.toSeq)))
 
@@ -148,6 +151,6 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
   }
 }
 
-object StopWordParameter extends Parameter[Set[String]] {
+object StopWordParameter extends Parameter[Set[String]] with Serializable{
   override val defaultValue: Option[Set[String]] = Some(Set())
 }
