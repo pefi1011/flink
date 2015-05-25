@@ -51,7 +51,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
 
     // docId, word, tfIdf
     val tfIdf = tf.join(idf).where(1).equalTo(0) {
-      (t1, t2) => (t1._1, t1._2, t1._3 * t2._2)
+      (t1, t2) => (t1._1, t1._2, t1._3 * ( t2._2 +1 ) /* tf * (idf + 1) */ ) // The effect of this is that terms with zero idf, i.e. that occur in all documents of a training set, will not be entirely ignored.
     }
 
     // TODO Delete these lines (only implementation purposes)

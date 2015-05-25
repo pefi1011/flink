@@ -31,9 +31,10 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     resultColl(0)._1 should be(documentKey)
     resultColl(0)._2.size should be(4)
 
-    for (x <- resultColl(0)._2) {
-      x._2 should be(0.0)
-    }
+    // This is not the case any more since we use the formula tf * ( idf + 1 )
+    //for (x <- resultColl(0)._2) {
+    //  x._2 should be(0.0)
+    // }
   }
 
   behavior of "Test_02: The tf idf transformer implementation on one document when tf is divided by the most frequent word from all documents"
@@ -56,9 +57,10 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     resultColl(0)._1 should be(documentKey)
     resultColl(0)._2.size should be(2)
 
-    for (x <- resultColl(0)._2) {
-      x._2 should be(0.0)
-    }
+    // This is not the case any more since we use the formula tf * ( idf + 1 )
+    //for (x <- resultColl(0)._2) {
+    //  x._2 should be(0.0)
+    // }
   }
 
   behavior of "Test_03: The tf idf transformer implementation on two documents when tf is divided by the most frequent word from all documents"
