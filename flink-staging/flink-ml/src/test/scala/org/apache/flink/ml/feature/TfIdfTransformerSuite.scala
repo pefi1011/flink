@@ -70,7 +70,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     val input = "First line!".toLowerCase.split(" ").toSeq
     val documentKey = 1
 
-    val input2 = "And more, more more, more! more more more line".toLowerCase.split(" ").toSeq
+    val input2 = "And here more, more more, more! more more more line".toLowerCase.split(" ").toSeq
     val documentKey2 = 2
 
     val inputDs = env.fromCollection(Seq((documentKey, input), (documentKey2, input2)))

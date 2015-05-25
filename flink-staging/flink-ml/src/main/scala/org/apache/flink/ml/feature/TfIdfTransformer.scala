@@ -18,36 +18,37 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
 
     // Here we will store the words in he form (docId, word, count)
     // Count represent the occurrence of "word" in document "docId"
-    val wordCounts = input
+    val words = input
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
-      t._2.map(s => (t._1, s.replaceAll("[!?,.:;]", ""), 1))
+      t._2.map(s => (t._1, s.replaceAll("[^a-zA-Z]+","") /* filter special characters */ , 1))
+      .filter(_._2 != "") // filter spaces (this could occur ist we have text like this "text text !! text" where !! would be computed as word)
     })
+
+    val wordsPerDoc = words
       .filter(t => !transformParameters.apply(StopWordParameter).contains(t._2))
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
       .sum(2)
 
-    val wordsOfAllDocs = input
-      //count the words
-      .flatMap(t => {
-      //create tuples docId, word, 1
-      t._2.map(s => (s.replaceAll("[!?,.:;]", ""), 1))
-    })
-      .filter(t => !transformParameters.apply(StopWordParameter).contains(t._1))
+    val wordsOfAllDocs = wordsPerDoc
+      .filter(t => !transformParameters.apply(StopWordParameter).contains(t._2))
       //group by document and word
-      .groupBy(0)
+      .groupBy(1)
       // calculate the occurrence count of each word in specific document
-      .sum(1)
+      .sum(2)
 
-    val wordsCount = wordsOfAllDocs.collect().length
+    val wordsCountPerDoc = wordsPerDoc.collect().length
+    val wordsCountOfAllDoc = wordsOfAllDocs.collect().length
 
-    println("Words Count: " + wordsCount)
 
-    val idf: DataSet[(String, Double)] = calculateIDF(wordCounts)
-    val tf: DataSet[(Int, String, Double)] = calculateTF(wordCounts)
+    println("Words count per doc: " + wordsCountPerDoc + "-----> " + wordsPerDoc.collect())
+    println("Words count of all doc: " + wordsCountOfAllDoc + "-----> " + wordsOfAllDocs.collect())
+
+    val idf: DataSet[(String, Double)] = calculateIDF(wordsPerDoc)
+    val tf: DataSet[(Int, String, Double)] = calculateTF(wordsPerDoc)
 
     // docId, word, tfIdf
     val tfIdf = tf.join(idf).where(1).equalTo(0) {
@@ -76,10 +77,10 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
     // END
 
     // Create the result
-    val res = tfIdf.map(t => (t._1, List[(Int, Double)]((Math.abs(MurmurHash3.stringHash(t._2) % wordsCount), t._3))))
+    val res = tfIdf.map(t => (t._1, List[(Int, Double)]((Math.abs(MurmurHash3.stringHash(t._2) % wordsCountOfAllDoc), t._3))))
     .groupBy(t => t._1)
     .reduce((t1, t2) => (t1._1, t1._2 ++ t2._2))
-    .map(t => (t._1, SparseVector.fromCOO(wordsCount, t._2.toIterable)))
+    .map(t => (t._1, SparseVector.fromCOO(wordsCountOfAllDoc, t._2.toIterable)))
 
     println()
     println("Result: " + res.collect())
