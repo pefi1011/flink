@@ -22,7 +22,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
-      t._2.map(s => (t._1, s.replaceAll("[!?,]", ""), 1))
+      t._2.map(s => (t._1, s.replaceAll("[!?,.:;]", ""), 1))
     })
       .filter(t => !transformParameters.apply(StopWordParameter).contains(t._2))
       //group by document and word
@@ -34,7 +34,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       //count the words
       .flatMap(t => {
       //create tuples docId, word, 1
-      t._2.map(s => (s.replaceAll("[!?,]", ""), 1))
+      t._2.map(s => (s.replaceAll("[!?,.:;]", ""), 1))
     })
       .filter(t => !transformParameters.apply(StopWordParameter).contains(t._1))
       //group by document and word
