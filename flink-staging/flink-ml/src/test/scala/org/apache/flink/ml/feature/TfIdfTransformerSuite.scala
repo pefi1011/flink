@@ -14,8 +14,7 @@ import org.apache.flink.ml.common.{Parameter, ParameterMap, Transformer}
  */
 class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
 
-  behavior of "the tf idf transformer implementation when tf is divided by the most frequent word from all documents"
-
+  behavior of "Test_01: The tf idf transformer implementation on one document where tf is divided by the most frequent word from all documents"
   it should "calculate four times zero for four words in only one document" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
@@ -25,9 +24,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     val inputDs = env.fromCollection(Seq((documentKey, input)))
     val transformer = new TfIdfTransformer()
 
-    val params = new ParameterMap()
-
-    val result = transformer.transform(inputDs,params)
+    val result = transformer.transform(inputDs)
     val resultColl = result.collect()
 
     resultColl.length should be(1)
@@ -39,6 +36,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     }
   }
 
+  behavior of "Test_02: The tf idf transformer implementation on one document when tf is divided by the most frequent word from all documents"
   it should "calculate two times zero for four words in only one document with stop word parameters" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
@@ -63,8 +61,8 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
     }
   }
 
-  behavior of "test2"
-  it should "calculate non zero result for tfidf" in {
+  behavior of "Test_03: The tf idf transformer implementation on two documents when tf is divided by the most frequent word from all documents"
+  it should "calculate non zero result for tf-idf" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
     val input = "First line".toLowerCase.split(" ").toSeq
@@ -92,7 +90,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
   }
 /*
 
-  behavior of "Running TF-IDF on tree read poems."
+  behavior of "Test_04: Running TF-IDF on tree read poems."
   it should "return almost the same results as Python's scikit tf idf implementation" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
