@@ -18,7 +18,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase{
   it should "calculate four times zero for four words in only one document" in {
 
     val env = ExecutionEnvironment.getExecutionEnvironment
-    val input = "This is a test".toLowerCase.split(" ").toSeq
+    val input = "This is a test !! !!".toLowerCase.split(" ").toSeq
     val documentKey = 1
 
     val inputDs = env.fromCollection(Seq((documentKey, input)))
