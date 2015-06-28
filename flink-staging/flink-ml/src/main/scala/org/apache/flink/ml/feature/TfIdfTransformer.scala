@@ -110,11 +110,11 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
    * @param wordInfosPerDoc DocId, Word and WordCount
    */
   private def calculateIDF(wordInfosPerDoc: DataSet[(Int, String, Int)]) = {
+
     val totalNumberOfDocuments = wordInfosPerDoc
       //map the input only to the docId
       .map(wordInfoPerDoc => wordInfoPerDoc._1)
       .distinct(t => t)
-      .count()
 
     // set is the calculated idf
     wordInfosPerDoc
@@ -125,8 +125,20 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       //and count the documents
       .reduce((word1, word2) => (word1._1, word1._2 + word2._2))
       //calculate IDF
-      .map(docCountByWord => (docCountByWord._1, log(totalNumberOfDocuments.toDouble / docCountByWord._2.toDouble) + 1.0))
+      //.map(docCountByWord => (docCountByWord._1, log(totalNumberOfDocuments.toDouble / docCountByWord._2.toDouble) + 1.0))
+      .map(new RichMapFunction[Tuple2[String, Int], Tuple2[String, Double]]() {
 
+      var broadcastTotalNumberOfDocuments: java.util.List[(Int)] = null
+
+      override def open(config: Configuration): Unit = {
+        broadcastTotalNumberOfDocuments = getRuntimeContext().getBroadcastVariable[Int]("broadcastSetName")
+      }
+
+      def map(in: Tuple2[String, Int]): Tuple2[String, Double] = {
+
+        (in._1, log(broadcastTotalNumberOfDocuments.size().toDouble / in._2.toDouble) + 1.0)
+      }
+    }).withBroadcastSet(totalNumberOfDocuments, "broadcastSetName")
   }
 }
 
