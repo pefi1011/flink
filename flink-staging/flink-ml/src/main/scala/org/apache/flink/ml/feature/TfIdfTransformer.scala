@@ -50,7 +50,7 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
         "(?u)\\b\\w\\w+\\b".r findAllIn textLine map (matchedWord => (inputEntry._1, matchedWord.toLowerCase, 1))
       })
     })
-      .filter(wordInfo => !transformParameters.apply(StopWordParameter).contains(wordInfo._2))
+      .filter(wordInfo => !transformParameters.apply(TfIdfTransformer.StopWordParameter).contains(wordInfo._2))
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
@@ -102,28 +102,6 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       .reduce((t1, t2) => (t1._1, t1._2 ++ t2._2, t1._3))
       .map(t => (t._1, SparseVector.fromCOO(t._3, t._2.toIterable)))
 
-    // Broadcast variable
-
-    // 1. The DataSet to be broadcasted
-    //    val toBroadcast = env.fromElements(1, 2, 3)
-    //
-    //    val data = env.fromElements("a", "b")
-    //
-    //    data.map(new RichMapFunction[String, String]() {
-    //      var broadcastSet: Traversable[String] = null
-    //
-    //      override def open(config: Configuration): Unit = {
-    //        // 3. Access the broadcasted DataSet as a Collection
-    //        broadcastSet = getRuntimeContext().getBroadcastVariable[String]("broadcastSetName").asScala
-    //      }
-    //
-    //      def map(in: String): String = {
-    //        ...
-    //      }
-    //    }).withBroadcastSet(toBroadcast, "broadcastSetName") // 2. Broadcast the DataSet
-    //
-
-    // return result
     res
   }
 
@@ -152,6 +130,11 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
   }
 }
 
-object StopWordParameter extends Parameter[Set[String]] with Serializable {
-  override val defaultValue: Option[Set[String]] = Some(Set())
+object TfIdfTransformer {
+
+  object StopWordParameter extends Parameter[Set[String]] with Serializable {
+    override val defaultValue: Option[Set[String]] = Some(Set())
+  }
+
 }
+

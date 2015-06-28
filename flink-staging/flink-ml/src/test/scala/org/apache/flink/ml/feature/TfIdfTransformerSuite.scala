@@ -60,7 +60,7 @@ class TfIdfTransformerSuite extends FlatSpec with Matchers with FlinkTestBase {
     val transformer = new TfIdfTransformer()
 
     val params = new ParameterMap()
-    params.add(StopWordParameter, Set("test", "one"))
+    params.add(TfIdfTransformer.StopWordParameter, Set("test", "one"))
 
     val result = transformer.transform(inputDs, params).collect()
 
