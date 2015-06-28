@@ -18,7 +18,9 @@
 
 package org.apache.flink.ml.feature
 
+import org.apache.flink.api.common.functions.RichMapFunction
 import org.apache.flink.api.scala.{DataSet, _}
+import org.apache.flink.configuration.Configuration
 import org.apache.flink.ml.common.{Parameter, ParameterMap, Transformer}
 import org.apache.flink.ml.math.SparseVector
 
@@ -74,7 +76,19 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       (t1, t2) => (t1._1, t1._2, t1._3.toDouble * t2._2)
     }
 
-    val res = tfIdf.crossWithTiny(numberOfWords)
+    val res = tfIdf.map(new RichMapFunction[Tuple3[Int, String, Double], Tuple2[Tuple3[Int, String, Double], Int]]() {
+
+      var broadcastNumberOfWords: java.util.List[(Int)] = null
+
+      override def open(config: Configuration): Unit = {
+        broadcastNumberOfWords = getRuntimeContext().getBroadcastVariable[Int]("broadcastSetName")
+      }
+
+      def map(in: Tuple3[Int, String, Double]): Tuple2[Tuple3[Int, String, Double], Int] = {
+        ((in._1, in._2, in._3), broadcastNumberOfWords.get(0))
+      }
+
+    }).withBroadcastSet(numberOfWords, "broadcastSetName")
       // docId, word, tfIdf, numberOfWords
       .map(wordInfo => (wordInfo._1._1, wordInfo._1._2, wordInfo._1._3, wordInfo._2))
       //assign every word its position
@@ -88,6 +102,28 @@ class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVecto
       .reduce((t1, t2) => (t1._1, t1._2 ++ t2._2, t1._3))
       .map(t => (t._1, SparseVector.fromCOO(t._3, t._2.toIterable)))
 
+    // Broadcast variable
+
+    // 1. The DataSet to be broadcasted
+    //    val toBroadcast = env.fromElements(1, 2, 3)
+    //
+    //    val data = env.fromElements("a", "b")
+    //
+    //    data.map(new RichMapFunction[String, String]() {
+    //      var broadcastSet: Traversable[String] = null
+    //
+    //      override def open(config: Configuration): Unit = {
+    //        // 3. Access the broadcasted DataSet as a Collection
+    //        broadcastSet = getRuntimeContext().getBroadcastVariable[String]("broadcastSetName").asScala
+    //      }
+    //
+    //      def map(in: String): String = {
+    //        ...
+    //      }
+    //    }).withBroadcastSet(toBroadcast, "broadcastSetName") // 2. Broadcast the DataSet
+    //
+
+    // return result
     res
   }
 
