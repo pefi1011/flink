@@ -1,138 +1,121 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.flink.ml.feature
 
-import akka.routing.MurmurHash
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.ml.common.{Parameter, ParameterMap, Transformer}
 import org.apache.flink.ml.math.SparseVector
+
+import scala.collection.mutable.LinkedHashSet
 import scala.math.log
-import scala.util.hashing.MurmurHash3
 
 /**
- * @author Ronny Bräunlich
- * @author Vassil Dimov
- * @author Filip Perisic
+ * This transformer calculates the term-frequency times inverse document frequency for the give DataSet of documents.
+ * The DataSet will be treated as the corpus of documents. The single words will be filtered against the regex:
+ * <code>
+ * (?u)\b\w\w+\b
+ * </code>
+ * <p>
+ * The TF is the frequency of a word inside one document
+ * <p>
+ * The IDF for a word is calculated: log(total number of documents / documents that contain the word) + 1
+ * The formula contains "+1", terms with a zero IDF don't get get completely ignored.
+ * <p>
+ * This transformer returns a SparseVector where the index is the hash of the word and the value the tf-idf.
  */
 class TfIdfTransformer extends Transformer[(Int, Seq[String]), (Int, SparseVector)] {
 
-  override def transform(input: DataSet[(Int /* docId */, Seq[String] /*The document */)], transformParameters: ParameterMap): DataSet[(Int, SparseVector)] = {
+  override def transform(input: DataSet[(Int /* docId */ , Seq[String] /*The document */ )], transformParameters: ParameterMap): DataSet[(Int, SparseVector)] = {
 
-    // Here we will store the words in he form (docId, word, count)
-    // Count represent the occurrence of "word" in document "docId"
-    val words = input
-      //count the words
-      .flatMap(t => {
-      //create tuples docId, word, 1
-      t._2.map(s => (t._1, s.replaceAll("[^a-zA-Z]+","") /* filter special characters */ , 1))
-      .filter(_._2 != "") // filter spaces (this could occur ist we have text like this "text text !! text" where !! would be computed as word)
+    val matchedWordCounts = input.flatMap(inputEntry => {
+      inputEntry._2.flatMap(textLine => {
+        "(?u)\\b\\w\\w+\\b".r findAllIn textLine map (matchedWord => (inputEntry._1, matchedWord.toLowerCase, 1))
+      })
     })
-
-    val wordsPerDoc = words
-      .filter(t => !transformParameters.apply(StopWordParameter).contains(t._2))
+      .filter(wordInfo => !transformParameters.apply(StopWordParameter).contains(wordInfo._2))
       //group by document and word
       .groupBy(0, 1)
       // calculate the occurrence count of each word in specific document
       .sum(2)
 
-    val wordsOfAllDocs = wordsPerDoc
-      .filter(t => !transformParameters.apply(StopWordParameter).contains(t._2))
-      //group by document and word
-      .groupBy(1)
-      // calculate the occurrence count of each word in specific document
-      .sum(2)
+    val dictionary = matchedWordCounts
+      .map(t => LinkedHashSet(t._2))
+      .reduce((set1, set2) => set1 ++ set2)
+      .map(set => set.zipWithIndex)
+      .flatMap(m => m.toList)
 
-    val wordsCountPerDoc = wordsPerDoc.collect().length
-    val wordsCountOfAllDoc = wordsOfAllDocs.collect().length
+    val numberOfWords = matchedWordCounts
+      .map(t => t._2)
+      .distinct(t => t)
+      .map(t => 1)
+      .reduce(_ + _)
 
-
-    println("Words count per doc: " + wordsCountPerDoc + "-----> " + wordsPerDoc.collect())
-    println("Words count of all doc: " + wordsCountOfAllDoc + "-----> " + wordsOfAllDocs.collect())
-
-    val idf: DataSet[(String, Double)] = calculateIDF(wordsPerDoc)
-    val tf: DataSet[(Int, String, Double)] = calculateTF(wordsPerDoc)
+    val idf: DataSet[(String, Double)] = calculateIDF(matchedWordCounts)
+    val tf: DataSet[(Int, String, Int)] = matchedWordCounts
 
     // docId, word, tfIdf
     val tfIdf = tf.join(idf).where(1).equalTo(0) {
-      (t1, t2) => (t1._1, t1._2, t1._3 * ( t2._2 +1 ) /* tf * (idf + 1) */ ) // The effect of this is that terms with zero idf, i.e. that occur in all documents of a training set, will not be entirely ignored.
+      (t1, t2) => (t1._1, t1._2, t1._3.toDouble * t2._2)
     }
 
-    // TODO Delete these lines (only implementation purposes)
-    val resTF = tf.collect()
-    val resIDF = idf.collect()
-    val resTfIdf = tfIdf.collect()
-    println("ResTF   ------->")
-    for ( tf <- resTF) {
-      print(" " + tf.toString())
-    }
-    println()
-    println("ResIDF  ------->")
-    for ( idf <- resIDF) {
-      print(" " + idf.toString())
-    }
-    println()
-    println("ResTfID ------->")
-    for ( idf <- resTfIdf) {
-      print(" " + idf.toString())
-    }
-    println()
-    // END
-
-    // Create the result
-    val res = tfIdf.map(t => (t._1, List[(Int, Double)]((Math.abs(MurmurHash3.stringHash(t._2) % wordsCountOfAllDoc), t._3))))
-    .groupBy(t => t._1)
-    .reduce((t1, t2) => (t1._1, t1._2 ++ t2._2))
-    .map(t => (t._1, SparseVector.fromCOO(wordsCountOfAllDoc, t._2.toIterable)))
-
-    println()
-    println("Result: " + res.collect())
+    val res = tfIdf.crossWithTiny(numberOfWords)
+      // docId, word, tfIdf, numberOfWords
+      .map(wordInfo => (wordInfo._1._1, wordInfo._1._2, wordInfo._1._3, wordInfo._2))
+      //assign every word its position
+      .joinWithTiny(dictionary).where(1).equalTo(0)
+      //join the tuples (docId, word, tfIdf, numberOfWords, index
+      .map(wordInfoWithIndex => (wordInfoWithIndex._1._1, wordInfoWithIndex._1._2, wordInfoWithIndex._1._3, wordInfoWithIndex._1._4, wordInfoWithIndex._2._2))
+      .map(t => {
+      (t._1, List[(Int, Double)]((t._5, t._3)), t._4)
+    })
+      .groupBy(t => t._1)
+      .reduce((t1, t2) => (t1._1, t1._2 ++ t2._2, t1._3))
+      .map(t => (t._1, SparseVector.fromCOO(t._3, t._2.toIterable)))
 
     res
   }
 
-  private def calculateTF(wordCounts: DataSet[(Int, String, Int)]): DataSet[(Int, String, Double)] = {
-    val mostOftenWord = wordCounts
-      //reduce to the count only
-      .map(t => t._3)
-      //take the biggest one
-      .reduce((nr1, nr2) => if (nr1 > nr2) nr1 else nr2)
-      .first(1)
-
-    println("Most often = " + mostOftenWord.collect())
-    val tf = wordCounts
-      //combine with the most often word
-      .crossWithTiny(mostOftenWord)
-      //create one tuple for easier handling (docId, Word, count, most often word)
-      .map(t => (t._1._1, t._1._2, t._1._3, t._2))
-      //calculate the tf (docId, word, tf)
-      .map(t => (t._1, t._2, t._3.asInstanceOf[Double] / t._4))
-    tf
-  }
-
   /**
    * Takes the DataSet of DocId, Word and WordCount and calculates the IDF as tuple of word and idf
-   * @param set
+   * @param wordInfosPerDoc DocId, Word and WordCount
    */
-  private def calculateIDF(set: DataSet[(Int, String, Int)]) = {
-    val totalNumberOfDocuments = set
+  private def calculateIDF(wordInfosPerDoc: DataSet[(Int, String, Int)]) = {
+    val totalNumberOfDocuments = wordInfosPerDoc
       //map the input only to the docId
-      .map(t => t._1)
-      .groupBy(i => i)
-      //reduce to unique docIds
-      .reduce((t1, t2) => t1)
-      .count();
+      .map(wordInfoPerDoc => wordInfoPerDoc._1)
+      .distinct(t => t)
+      .count()
 
-    val idf = set
-      //for tuple docId, Word and wordcount only take the word and a 1
-      .map(t => (t._2, 1))
+    // set is the calculated idf
+    wordInfosPerDoc
+      //for tuple docId, Word and wordCount only take the word and a 1
+      .map(wordInfoPerDoc => (wordInfoPerDoc._2, 1))
       //group by word
-      .groupBy(t => t._1)
+      .groupBy(word => word._1)
       //and count the documents
-      .reduce((t1, t2) => (t1._1, t1._2 + t2._2))
+      .reduce((word1, word2) => (word1._1, word1._2 + word2._2))
       //calculate IDF
-      .map( t => (t._1, log(totalNumberOfDocuments / t._2)))
-    idf
+      .map(docCountByWord => (docCountByWord._1, log(totalNumberOfDocuments.toDouble / docCountByWord._2.toDouble) + 1.0))
+
   }
 }
 
-object StopWordParameter extends Parameter[Set[String]] with Serializable{
+object StopWordParameter extends Parameter[Set[String]] with Serializable {
   override val defaultValue: Option[Set[String]] = Some(Set())
 }
